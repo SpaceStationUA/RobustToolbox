@@ -174,8 +174,15 @@ namespace Robust.Server.Console
             while (Con.KeyAvailable)
             {
                 ConsoleKeyInfo key = Con.ReadKey(true);
-                if (Con.WindowWidth > 0)
-                    Con.SetCursorPosition(0, Con.CursorTop);
+                if (OperatingSystem.IsWindows())
+                {
+                    if (Con.WindowWidth > 0)
+                        Con.SetCursorPosition(0, Con.CursorTop);
+                }
+                else if (key.Key == ConsoleKey.Enter)
+                {
+                    Con.Write('\r');
+                }
                 if (!Char.IsControl(key.KeyChar))
                 {
                     currentBuffer = currentBuffer.Insert(internalCursor++, key.KeyChar.ToString());
@@ -279,18 +286,32 @@ namespace Robust.Server.Console
         public void DrawCommandLine()
         {
             if (Con.WindowWidth <= 0) return;
+            if (OperatingSystem.IsWindows())
+            {
+                ClearCurrentLine();
+                Con.SetCursorPosition(0, Con.CursorTop);
+                Con.Write("> " + currentBuffer);
+                Con.SetCursorPosition(internalCursor + 2, Con.CursorTop); //+2 is for the "> " at the beginning of the line
+                return;
+            }
+
             ClearCurrentLine();
-            Con.SetCursorPosition(0, Con.CursorTop);
             Con.Write("> " + currentBuffer);
-            Con.SetCursorPosition(internalCursor + 2, Con.CursorTop); //+2 is for the "> " at the beginning of the line
+            Con.Write($"\u001b[{internalCursor + 3}G"); // CSI G uses a 1-based column.
         }
 
         private static void ClearCurrentLine()
         {
-            var currentLineCursor = Con.CursorTop;
-            Con.SetCursorPosition(0, Con.CursorTop);
-            Con.Write(new string(' ', Con.WindowWidth - 1));
-            Con.SetCursorPosition(0, currentLineCursor);
+            if (OperatingSystem.IsWindows())
+            {
+                var currentLineCursor = Con.CursorTop;
+                Con.SetCursorPosition(0, Con.CursorTop);
+                Con.Write(new string(' ', Con.WindowWidth - 1));
+                Con.SetCursorPosition(0, currentLineCursor);
+                return;
+            }
+
+            Con.Write("\r\u001b[2K");
         }
 
         private string TabComplete()
